@@ -1,0 +1,8 @@
+{
+  "name": "MeritExam — 9th",
+  "description": "9th Class (SSC-I) Federal Board (FBISE / NBF) & Punjab Board (PTB) examination portal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
