@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CalendarClock, Check, CopyPlus, X } from 'lucide-react';
-import { GRADES, GRADE_LABELS, GradeLevel, MCQTest } from '../types';
+import { GRADE_LABELS, GradeLevel, MCQTest } from '../types';
+import { getActiveEditionClass, getEditionAllowedGrades } from '../config/appEdition';
 import { publishMCQTest, updateTestScheduleAndAccess } from '../services/mcqService';
 
 interface ScheduleAccessModalProps {
@@ -209,7 +210,7 @@ export function ScheduleAccessModal({
               Permitted Classes (Only selected classes see this paper)
             </label>
             <div className="flex flex-wrap gap-2">
-              {GRADES.map((g) => {
+              {getEditionAllowedGrades(getActiveEditionClass()).map((g) => {
                 const selected = allowedGrades.includes(g);
                 return (
                   <button

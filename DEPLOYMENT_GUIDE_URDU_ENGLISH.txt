@@ -1,9 +1,9 @@
 ====================================================================
-MERITEXAM DEPLOYMENT GUIDE — 9TH CLASS (SSC-I)
+MERITEXAM DEPLOYMENT GUIDE — SSC (9TH & 10TH CLASSES)
 ====================================================================
 
 EDITION INCLUDED IN THIS ZIP:
-- Locked Class Mode: 9th (9th Class (SSC-I))
+- Locked Class Mode: SSC (SSC (9th & 10th Classes))
 
 STEP 1: UPLOAD TO GITHUB
 1. Create a GitHub repository in your target GitHub account.
@@ -15,7 +15,7 @@ STEP 2: DEPLOY FREE ON VERCEL OR NETLIFY
 - Install Command: npm install --legacy-peer-deps
 - Environment Variables to add in Vercel / Netlify Settings:
   1) GEMINI_API_KEY = <your free Google AI Studio Gemini API key>
-  2) Optional override: VITE_APP_CLASS = "9th"
+  2) Optional override: VITE_APP_CLASS = "SSC"
 
 STEP 3: CONNECT OWN FREE FIREBASE PROJECT (FOR INDEPENDENT FREE QUOTA)
 1. Create a free Firebase project (Spark Plan) at https://console.firebase.google.com
@@ -29,7 +29,7 @@ STEP 3: CONNECT OWN FREE FIREBASE PROJECT (FOR INDEPENDENT FREE QUOTA)
 ====================================================================
 اردو رہنمائی (URDU GUIDE)
 ====================================================================
-یہ ZIP فائل خاص طور پر "9th Class (SSC-I)" کے لیے تیار کی گئی ہے۔
+یہ ZIP فائل خاص طور پر "SSC (9th & 10th Classes)" کے لیے تیار کی گئی ہے۔
 1. اس کو اپنے علیحدہ GitHub اکاؤنٹ میں اپ لوڈ کریں۔
 2. Vercel یا Netlify پر فری Deploy کریں اور Environment Variables میں اپنا GEMINI_API_KEY شامل کریں۔
 3. مکمل الگ فری Firebase حد (50k Reads / 20k Writes روزانہ) کے لیے نیا فری Firebase پروجیکٹ بنائیں،

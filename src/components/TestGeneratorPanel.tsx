@@ -7,7 +7,6 @@ import {
   EXAM_BOARDS,
   EXAM_TYPE_PRESETS,
   ExamBoard,
-  GRADES,
   GRADE_LABELS,
   GradeLevel,
   MAX_TOPIC_LENGTH,
@@ -19,7 +18,7 @@ import {
   TestDeliveryOverride,
   getSyllabusChapters,
 } from '../types';
-import { getActiveEditionClass } from '../config/appEdition';
+import { getActiveEditionClass, getEditionAllowedGrades } from '../config/appEdition';
 import { generateMCQsFromServer, publishMCQTest } from '../services/mcqService';
 import {
   FBISE_PATTERN_MODES,
@@ -57,10 +56,14 @@ export function TestGeneratorPanel({
   onPublished,
 }: TestGeneratorPanelProps) {
   const activeEdition = getActiveEditionClass();
+  const editionGrades = getEditionAllowedGrades(activeEdition);
   const effectiveLockedGrade: GradeLevel | undefined =
-    lockedGrade ?? (activeEdition !== 'All' ? activeEdition : undefined);
+    lockedGrade ?? (editionGrades.length === 1 ? editionGrades[0] : undefined);
   const initialGrade: GradeLevel =
-    effectiveLockedGrade ?? (defaultGrade && defaultGrade !== 'All' ? defaultGrade : '9th');
+    effectiveLockedGrade ??
+    (defaultGrade && defaultGrade !== 'All' && editionGrades.includes(defaultGrade)
+      ? defaultGrade
+      : editionGrades[0]);
   const initialSubject: SubjectName =
     defaultSubject && defaultSubject !== 'All' ? defaultSubject : 'Physics';
   const initialPattern = getOfficialPattern('fbise_nbf', initialGrade, initialSubject, 'reformed_50_50');
@@ -654,7 +657,7 @@ export function TestGeneratorPanel({
               }}
               className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-100 disabled:text-slate-700"
             >
-              {(effectiveLockedGrade ? [effectiveLockedGrade] : GRADES).map((g) => (
+              {(effectiveLockedGrade ? [effectiveLockedGrade] : editionGrades).map((g) => (
                 <option key={g} value={g}>
                   {GRADE_LABELS[g]}
                 </option>
@@ -1256,7 +1259,7 @@ export function TestGeneratorPanel({
                 <span className="text-[11px] font-semibold text-slate-700 mr-1">
                   Permitted Classes:
                 </span>
-                {(effectiveLockedGrade ? [effectiveLockedGrade] : GRADES).map((g) => {
+                {(effectiveLockedGrade ? [effectiveLockedGrade] : editionGrades).map((g) => {
                   const checked = effectiveLockedGrade ? g === effectiveLockedGrade : allowedGrades.includes(g);
                   return (
                     <button

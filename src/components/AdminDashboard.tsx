@@ -52,7 +52,6 @@ import {
 } from '../services/mcqService';
 import {
   AccountStatus,
-  GRADES,
   GRADE_LABELS,
   GradeLevel,
   MCQTest,
@@ -73,7 +72,13 @@ import { StudentRecordModal } from './StudentRecordModal';
 import { PlatformBrochureModal } from './PlatformBrochureModal';
 import { ClassDeploymentsModal } from './ClassDeploymentsModal';
 import { DeveloperFooter } from './DeveloperFooter';
-import { getActiveEditionClass, getClassPathSlug } from '../config/appEdition';
+import {
+  getActiveEditionClass,
+  getClassPathSlug,
+  getEditionAllowedGrades,
+  getEditionShortBadge,
+  isEditionRestricted,
+} from '../config/appEdition';
 import {
   buildStudentPerformanceReport,
   getEffectiveTestEndMs,
@@ -103,8 +108,12 @@ function parseTimestampMs(value: unknown): number | null {
 export function AdminDashboard() {
   const { firebaseUser, userProfile, isMainAdmin, systemSettings, logout } = useAuth();
   const activeEdition = getActiveEditionClass();
-  const isSingleClassEdition = activeEdition !== 'All';
-  const showMainAdminPlatformTools = !isSingleClassEdition && isMainAdmin;
+  const isRestrictedEdition = isEditionRestricted(activeEdition);
+  const editionGrades = getEditionAllowedGrades(activeEdition);
+  const isSingleClassEdition = editionGrades.length === 1;
+  const singleLockedGrade = isSingleClassEdition ? editionGrades[0] : undefined;
+  const editionBadge = getEditionShortBadge(activeEdition);
+  const showMainAdminPlatformTools = !isRestrictedEdition && isMainAdmin;
   const [activeTab, setActiveTab] = useState<'users' | 'settings' | 'tests' | 'results'>('users');
 
   const [users, setUsers] = useState<UserAccount[]>([]);
@@ -114,11 +123,11 @@ export function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState<AccountStatus | 'all'>('all');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
   const [userClassFilter, setUserClassFilter] = useState<GradeLevel | 'All'>(
-    isSingleClassEdition ? activeEdition : 'All',
+    singleLockedGrade ?? 'All',
   );
 
   const [resultsClassFilter, setResultsClassFilter] = useState<GradeLevel | 'All'>(
-    isSingleClassEdition ? activeEdition : 'All',
+    singleLockedGrade ?? 'All',
   );
   const [resultsTestFilter, setResultsTestFilter] = useState<string>('all');
   const [resultsAttendanceFilter, setResultsAttendanceFilter] = useState<
@@ -174,7 +183,18 @@ export function AdminDashboard() {
     const unsubUsers = onSnapshot(
       query(collection(db, 'users'), orderBy('createdAt', 'desc')),
       (snap) => {
-        setUsers(snap.docs.map((d) => d.data() as UserAccount));
+        const list = snap.docs.map((d) => d.data() as UserAccount);
+        setUsers(
+          !isRestrictedEdition
+            ? list
+            : list.filter((u) => {
+                if (u.role === 'admin') return true;
+                if (u.role === 'teacher') {
+                  return u.grade === 'All' || editionGrades.includes(u.grade as GradeLevel);
+                }
+                return !isSingleStudentGrade(u.grade) || editionGrades.includes(u.grade as GradeLevel);
+              }),
+        );
       },
       (error) => {
         handleFirestoreError(error, OperationType.LIST, 'users');
@@ -184,7 +204,16 @@ export function AdminDashboard() {
     const unsubTests = onSnapshot(
       query(collection(db, 'tests'), orderBy('createdAt', 'desc')),
       (snap) => {
-        setTests(snap.docs.map((d) => d.data() as MCQTest));
+        const list = snap.docs.map((d) => d.data() as MCQTest);
+        setTests(
+          !isRestrictedEdition
+            ? list
+            : list.filter((t) => {
+                const allowed =
+                  t.allowedGrades && t.allowedGrades.length > 0 ? t.allowedGrades : [t.grade];
+                return allowed.some((g) => editionGrades.includes(g));
+              }),
+        );
       },
       (error) => {
         handleFirestoreError(error, OperationType.LIST, 'tests');
@@ -194,7 +223,12 @@ export function AdminDashboard() {
     const unsubAttempts = onSnapshot(
       query(collection(db, 'attempts'), orderBy('submittedAt', 'desc')),
       (snap) => {
-        setAttempts(snap.docs.map((d) => d.data() as TestAttempt));
+        const list = snap.docs.map((d) => d.data() as TestAttempt);
+        setAttempts(
+          !isRestrictedEdition
+            ? list
+            : list.filter((a) => editionGrades.includes(a.grade as GradeLevel)),
+        );
       },
       (error) => {
         handleFirestoreError(error, OperationType.LIST, 'attempts');
@@ -647,9 +681,9 @@ export function AdminDashboard() {
           <div className="font-display text-base sm:text-lg font-bold text-slate-900 whitespace-nowrap shrink-0 inline-flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-xs bg-gradient-to-br from-amber-500 to-orange-600 shrink-0" />
             <span>MeritExam Admin</span>
-            {isSingleClassEdition && (
+            {isRestrictedEdition && (
               <span className="px-2 py-0.5 text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200 rounded">
-                {activeEdition}
+                {editionBadge}
               </span>
             )}
             {isMainAdmin && (
@@ -857,10 +891,10 @@ export function AdminDashboard() {
                   type="button"
                   onClick={() => setShowClassDeploymentsModal(true)}
                   className="px-3.5 py-2 text-xs sm:text-sm font-semibold text-purple-800 bg-purple-50 border border-purple-200 hover:bg-purple-100 rounded-lg inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer transition-colors"
-                  title="Get 4 separate class links & ZIPs (9th, 10th, 1st Year, 2nd Year) + 1 Complete All-Classes ZIP"
+                  title="Get SSC (9th & 10th), HSSC (1st & 2nd Year), 4 single-class, and Complete All-Classes links & ZIPs"
                 >
                   <Layers className="w-4 h-4" />
-                  5 Links &amp; ZIPs
+                  Portal Links &amp; ZIPs
                 </button>
                 <button
                   type="button"
@@ -967,8 +1001,10 @@ export function AdminDashboard() {
                   aria-label="Filter accounts by class"
                   className="px-3 py-1.5 text-xs font-medium bg-white border border-slate-300 rounded-lg"
                 >
-                  <option value="All">All Classes</option>
-                  {GRADES.map((g) => (
+                  <option value="All">
+                    {isRestrictedEdition ? `All (${editionBadge})` : 'All Classes'}
+                  </option>
+                  {editionGrades.map((g) => (
                     <option key={g} value={g}>
                       {GRADE_LABELS[g]}
                     </option>
@@ -1089,7 +1125,7 @@ export function AdminDashboard() {
                                     All Classes — Select Class
                                   </option>
                                 )}
-                                {GRADES.map((g) => (
+                                {editionGrades.map((g) => (
                                   <option key={g} value={g}>
                                     {g}
                                   </option>
@@ -1493,7 +1529,7 @@ export function AdminDashboard() {
               creatorUid={firebaseUser.uid}
               creatorName={userProfile?.fullName || 'Administrator'}
               creatorRole="admin"
-              lockedGrade={isSingleClassEdition ? activeEdition : undefined}
+              lockedGrade={singleLockedGrade}
               systemSettings={systemSettings}
             />
 
@@ -1748,8 +1784,10 @@ export function AdminDashboard() {
                     aria-label="Filter results by class"
                     className="px-3 py-1.5 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-lg"
                   >
-                    <option value="All">All Classes ({approvedStudents.length} Students)</option>
-                    {GRADES.map((g) => {
+                    <option value="All">
+                      {isRestrictedEdition ? `All ${editionBadge}` : 'All Classes'} ({approvedStudents.length} Students)
+                    </option>
+                    {editionGrades.map((g) => {
                       const count = approvedStudents.filter(
                         (s) => String(s.grade).trim() === g,
                       ).length;
